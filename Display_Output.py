@@ -134,10 +134,24 @@ class HT16K33_quad_alpha:
 
             self.__bus.write_i2c_block_data(self.__addr, 0, output)
 
+    def loading_sequence(self):
+        self.clear_display()
+        buffer = [0, 0, 0, 0, 0, 0, 0, 0]
+        for index in range(0, 6):
+            for digit in range(0, 8, 2):
+                buffer[digit] = buffer[digit] << 1 | 0x01
+                self.__bus.write_i2c_block_data(self.__addr, 0, buffer)
+                time.sleep(0.01)
+        for index in range(0, 6):
+            for digit in range(0, 8, 2):
+                buffer[digit] = buffer[digit] << 1 & 0x3E
+                self.__bus.write_i2c_block_data(self.__addr, 0, buffer)
+                time.sleep(0.01)
+
     def clear_display(self):
         all_clear = [0, 0, 0, 0, 0, 0, 0, 0]
         self.__bus.write_i2c_block_data(self.__addr, 0, all_clear)
 
-    def close(self):
+    def deinit(self):
         self.clear_display()
         self.__bus.close()

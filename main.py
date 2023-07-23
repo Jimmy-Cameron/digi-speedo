@@ -1,55 +1,54 @@
 import sys
 import time
+import threading
 import serial
 
-from Display_Output import HT16K33_quad_alpha as quad_display
+from Display_Output import HT16K33_quad_alpha
+from GPS_Module import ultimate_gps_module
 
 # i2c setup
 I2C_CHANNEL = 1
 HT16K33_ADDR = 0x70
 
+# gps setup
+SERIAL_CHANNEL = "/dev/ttyS0"
+BAUDRATE = 9600
+
 if __name__ == "__main__":
     # Initialize display
-    output = quad_display(i2c_channel=I2C_CHANNEL, dev_address=HT16K33_ADDR)
-    output.print_string(message="Hi")
+    output = HT16K33_quad_alpha(i2c_channel=I2C_CHANNEL, dev_address=HT16K33_ADDR)
 
-    # Open serial port - connected to GPS module
-    ser = serial.Serial ("/dev/ttyS0", 9600)
+    # Initialize GPS module
+    gps_connected = False
+    while gps_connected == False:
+        gps = ultimate_gps_module(SERIAL_CHANNEL, BAUDRATE)
+        if gps.check_is_ready():
+            gps_connected = True
+        else:
+            output.loading_sequence()
+            # output.print_string(message="Wait")
+    
+    output.print_string(message="DIGI")
 
     while(1):
         try:
-            gps_sentence = (str)(ser.readline())
-
-            # Strip unecessary characters from beginning and end of string
-            gps_sentence = gps_sentence.replace('\\r\\n\'', '')
-            gps_sentence = gps_sentence[2:]
+            speed = round(gps.get_current_speed(print_to_console=0))
+            speed = str(speed)
+            speed = ((4 - len(speed)) * " ") + speed
+            output.print_string(message=speed)
+            print(speed)
+            time.sleep(0.01)
             
-            if "$GPGGA" in gps_sentence:
-                gps_sentence = gps_sentence.split(",")
+            # text = input("Update display?")
+            # text = text.lower()
+            # if text == "gps":
+            #     gps.get_current_location()
+            # elif text == "speed":
+            #     gps.get_current_speed()
+            # else:  
+            #     output.print_string(message=text)
 
-                # Extract information required to find location
-                latitude_nmea = (float)(gps_sentence[2])
-                latitude_degrees = (int)(latitude_nmea / 100)
-                latitude_minutes = latitude_nmea - (latitude_degrees * 100)
-                latitude_dec = latitude_degrees + (latitude_minutes / 60)
-                if gps_sentence[3] == 'S':
-                    latitude_dec = -latitude_dec
-
-                longitude_nmea = (float)(gps_sentence[4])
-                longitude_degrees = (int)(longitude_nmea / 100)
-                longitude_minutes = longitude_nmea - (longitude_degrees * 100)
-                longitude_dec = longitude_degrees + (longitude_minutes / 60)
-                if gps_sentence[5] == 'W':
-                    longitude_dec = -longitude_dec
-
-                print(f"{latitude_dec}, {longitude_dec}")
-                text = str(latitude_dec) + str(longitude_dec)
-                output.print_string(message=text)
-
-            # text = input("Update display? ")
-            # output.print_string(message=text)
-            pass
         except KeyboardInterrupt:
-            # Turn it off, and close the bus!
-            output.close()
+            gps.deinit()
+            output.deinit()
             sys.exit()
