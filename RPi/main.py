@@ -26,7 +26,6 @@ if __name__ == "__main__":
             gps_connected = True
         else:
             output.loading_sequence()
-            # output.print_string(message="Wait")
     
     output.print_string(message="DIGI")
 
