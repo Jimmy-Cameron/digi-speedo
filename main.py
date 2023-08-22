@@ -27,7 +27,7 @@ if __name__ == "__main__":
     while(1):
         output.loading_sequence()
         time.sleep(1)
-        print("Hello!")
+
         # # speed = round(gps.get_current_speed(print_to_console=0))
         # speed = gps.get_current_speed(print_to_console=0)
         # speed = str(speed)

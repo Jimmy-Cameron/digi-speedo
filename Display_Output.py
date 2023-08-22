@@ -1,4 +1,4 @@
-import smbus
+import machine
 import time
 
 HT16K33_ON      = 0x21  #  0 = off   1 = on
@@ -16,7 +16,7 @@ HT16K33_STEADYON        = 0x81
 
 #  bit pattern 1110 xxxx
 #  xxxx    =  0000 .. 1111 (0 - F)
-HT16K33_BRIGHTNESS      = 0xE0
+HT16K33_BRIGHTNESS      = 0xEF
 
 display_characters = {
     # Numbers
@@ -77,14 +77,24 @@ display_characters = {
 }
 
 class HT16K33_quad_alpha:
-    def __init__(self, i2c_channel, dev_address):
+    def __init__(self, i2c_peripheral, dev_address):
+        print("Initialising i2c bus...")
         self.__addr = dev_address
-        self.__bus = smbus.SMBus(i2c_channel)
+        self.__bus = machine.I2C(i2c_peripheral, scl=machine.Pin(5), sda=machine.Pin(4), freq=400000)
 
-        self.__bus.write_byte(self.__addr, HT16K33_ON)
-        self.__bus.write_byte(self.__addr, HT16K33_DISPLAYON)
-        self.__bus.write_byte(self.__addr, HT16K33_BRIGHTNESS)
-        self.__bus.write_byte(self.__addr, HT16K33_STEADYON)
+        # Make sure the target device is available
+        devices = self.__bus.scan()
+        if dev_address not in devices:
+            print("Could not find target device.")
+            return
+        else:
+            print("Found target device.")
+
+        buf = []
+        self.__bus.writeto_mem(self.__addr, HT16K33_ON, bytes(buf))
+        self.__bus.writeto_mem(self.__addr, HT16K33_DISPLAYON, bytes(buf))
+        self.__bus.writeto_mem(self.__addr, HT16K33_BRIGHTNESS, bytes(buf))
+        self.__bus.writeto_mem(self.__addr, HT16K33_STEADYON, bytes(buf))
 
         self.clear_display()
 
@@ -109,7 +119,8 @@ class HT16K33_quad_alpha:
                 scrolling_buffer.pop(0)
 
                 # Show the scrolling buffer, updating at 0.5 Hz
-                self.__bus.write_i2c_block_data(self.__addr, 0, scrolling_buffer)
+                self.__bus.writeto_mem(self.__addr, 0x00, bytes(scrolling_buffer))
+                # self.__bus.writeto(self.__addr, bytes(scrolling_buffer))
                 time.sleep(0.5)
 
             # All of the message has been displayed, but we need to carry on with some blank characters
@@ -122,7 +133,8 @@ class HT16K33_quad_alpha:
                 scrolling_buffer.pop(0)
                 scrolling_buffer.pop(0)
 
-                self.__bus.write_i2c_block_data(self.__addr, 0, scrolling_buffer)
+                self.__bus.writeto_mem(self.__addr, 0x00, bytes(scrolling_buffer))
+                # self.__bus.writeto(self.__addr, bytes(scrolling_buffer))
                 time.sleep(0.5)
             self.clear_display()
         else:
@@ -132,7 +144,8 @@ class HT16K33_quad_alpha:
                 output.append( int(display_characters.get(char, "0x2D00"), 16) & 0x00FF)
                 output.append((int(display_characters.get(char, "0x2D00"), 16) & 0xFF00) >> 8)
 
-            self.__bus.write_i2c_block_data(self.__addr, 0, output)
+            self.__bus.writeto_mem(self.__addr, 0x00, bytes(output))
+            # self.__bus.writeto(self.__addr, bytes(output))
 
     def loading_sequence(self):
         self.clear_display()
@@ -140,18 +153,23 @@ class HT16K33_quad_alpha:
         for index in range(0, 6):
             for digit in range(0, 8, 2):
                 buffer[digit] = buffer[digit] << 1 | 0x01
-                self.__bus.write_i2c_block_data(self.__addr, 0, buffer)
+                self.__bus.writeto_mem(self.__addr, 0x00, bytes(buffer))
+                # self.__bus.writeto(self.__addr, bytes(buffer))
                 time.sleep(0.01)
         for index in range(0, 6):
             for digit in range(0, 8, 2):
                 buffer[digit] = buffer[digit] << 1 & 0x3E
-                self.__bus.write_i2c_block_data(self.__addr, 0, buffer)
+                self.__bus.writeto_mem(self.__addr, 0x00, bytes(buffer))
+                # self.__bus.writeto(self.__addr, bytes(buffer))
                 time.sleep(0.01)
 
     def clear_display(self):
-        all_clear = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.__bus.write_i2c_block_data(self.__addr, 0, all_clear)
+        all_clear = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        self.__bus.writeto_mem(self.__addr, 0x00, bytes(all_clear))
+    
+    def fill_display(self):
+        all_fill = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+        self.__bus.writeto_mem(self.__addr, 0x00, bytes(all_fill))
 
     def deinit(self):
         self.clear_display()
-        self.__bus.close()
