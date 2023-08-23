@@ -1,4 +1,5 @@
-import machine
+# import machine
+from machine import I2C, Pin
 import time
 
 HT16K33_ON      = 0x21  #  0 = off   1 = on
@@ -80,7 +81,7 @@ class HT16K33_quad_alpha:
     def __init__(self, i2c_peripheral, dev_address):
         print("Initialising i2c bus...")
         self.__addr = dev_address
-        self.__bus = machine.I2C(i2c_peripheral, scl=machine.Pin(5), sda=machine.Pin(4), freq=400000)
+        self.__bus = I2C(i2c_peripheral, scl=Pin(5), sda=Pin(4), freq=400000)
 
         # Make sure the target device is available
         devices = self.__bus.scan()
@@ -173,3 +174,7 @@ class HT16K33_quad_alpha:
 
     def deinit(self):
         self.clear_display()
+
+    #TODO   When printing to the display, the 'address' needs to be 0x00.
+    #       Could just leave it as is and remember to append 0x00 to all buffers to printed,
+    #       but it feels dirty and could definitely be better!

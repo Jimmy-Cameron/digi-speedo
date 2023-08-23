@@ -1,4 +1,4 @@
-import serial
+from machine import UART, Pin
 
 POSITION_FIX_NOT_AVAILABLE  = 0
 POSITION_GPS_FIX            = 1
@@ -13,18 +13,20 @@ NMEA_VTG = "$GPVTG"
 class ultimate_gps_module:
     def __init__(self, serial_port, baud_rate):
         # Connect to GPS module via serial port
-        self.__ser = serial.Serial(serial_port, baud_rate)
-        if self.__ser.is_open:
-            # Check if it has a satellite fix
-            # if self.check_satellite_fix() == False:
-            self.check_satellite_fix()
-            if self.__gps_fix == False:
-                # Make sure to close the connection - if we connect to the GPS module before it has found a fix,
-                # we can't seem to get coordinates out even after it does get a fix!
-                self.__ser.close()
+        self.__uart = UART(serial_port)
+        self.__uart.init(baudrate=baud_rate, tx=Pin(0), rx=Pin(1), timeout=100, timeout_char=100)
+
+        # Check if there is a satellite fix
+        self.check_satellite_fix()
+        if self.__gps_fix == False:
+            print("No connection yet...")
+            # GPS doesn't have a connection yet
+            # Make sure to close the connection - if we connect to the GPS module before it has found a fix,
+            # we can't seem to get coordinates out even after it does get a fix!
+            self.__uart.deinit()
     
     def check_is_ready(self):
-        if self.__ser.is_open and self.__gps_fix:
+        if self.__uart and self.__gps_fix:
             return True
         return False
 
@@ -37,11 +39,11 @@ class ultimate_gps_module:
                 self.__gps_fix = True
 
     def read_nmea_sentence(self, option):
-        if self.__ser.is_open:
+        if self.__uart:
             sentence_found = None
             while sentence_found == None:
                 # Read from GPS module and strip unecessary characters from beginning and end of string
-                nmea_sentence = (str)(self.__ser.readline())
+                nmea_sentence = (str)(self.__uart.readline())
                 nmea_sentence = nmea_sentence.replace('\\r\\n\'', '')
                 nmea_sentence = nmea_sentence[2:]
                 if option in nmea_sentence:
@@ -85,5 +87,4 @@ class ultimate_gps_module:
 
     def deinit(self):
         # Disconnect from serial port
-        if self.__ser.is_open:
-            self.__ser.close()
+        self.__uart.deinit()
