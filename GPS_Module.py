@@ -11,24 +11,81 @@ NMEA_RMC = "$GPRMC"
 NMEA_VTG = "$GPVTG"
 
 class ultimate_gps_module:
-    def __init__(self, serial_port, baud_rate):
-        # Connect to GPS module via serial port
-        self.__uart = UART(serial_port)
-        self.__uart.init(baudrate=baud_rate, tx=Pin(0), rx=Pin(1), timeout=100, timeout_char=100)
+    """ Open connection over a UART port
 
+    ...
+
+    Attributes
+    ----------
+    serial_port : int
+        ID of the UART port to be used
+
+    Methods
+    -------
+    setup(baud_rate, tx_pin, rx_pin, timeout)
+        Configures the serial connection and checks if the GPS module has a satellite fix
+
+    deinit():
+        Closes the serial connection
+        
+    check_if_ready()
+        Returns True if UART has been configured and GPS has a satellite fix
+
+    read_nmea_sentence(option)
+        Reads the requested sentence from the GPS module
+
+    get_current_location()
+        Returns the current location in the format {latitude, longitude} in decimal
+
+    get_current_speed()
+        Returns the current speed in mph (as a float)
+    """
+    
+    def __init__(self, serial_port):
+        self.__uart = UART(serial_port)
+    
+
+    def setup(self, baud_rate, tx_pin, rx_pin, timeout):
+        """ Configures the serial connection and checks if the GPS module has a satellite fix.
+
+        Parameters
+        ----------
+        baud_rate : int
+            Speed of the UART connection
+        
+        tx_pin : int
+            GPIO number of the pin used for transmitting
+        
+        rx_pin : int
+            GPIO number of the pin used for receiving
+
+        timeout : int
+            Maximum time to wait for the first character of a new line and als between characters. 
+        """
+        
+        self.__uart.init(baudrate=baud_rate, tx=Pin(tx_pin), rx=Pin(rx_pin), timeout=timeout, timeout_char=timeout)
         # Check if there is a satellite fix
         self.check_satellite_fix()
         if self.__gps_fix == False:
             print("No connection yet...")
-            # GPS doesn't have a connection yet
-            # Make sure to close the connection - if we connect to the GPS module before it has found a fix,
-            # we can't seem to get coordinates out even after it does get a fix!
-            self.__uart.deinit()
-    
-    def check_is_ready(self):
+        pass
+
+
+    def deinit(self):
+        """ Closes the serial connection.
+
+        After calling this, a new instance needs to be created before calling setup() again.
+        """
+        
+        # Disconnect from serial port
+        self.__uart.deinit()
+
+
+    def check_if_ready(self):
         if self.__uart and self.__gps_fix:
             return True
         return False
+
 
     def check_satellite_fix(self):
         nmea_sentence = self.read_nmea_sentence(NMEA_GGA)
@@ -37,6 +94,7 @@ class ultimate_gps_module:
                 self.__gps_fix = False
             else:
                 self.__gps_fix = True
+
 
     def read_nmea_sentence(self, option):
         if self.__uart:
@@ -50,6 +108,7 @@ class ultimate_gps_module:
                     nmea_sentence = nmea_sentence.split(",")
                     sentence_found = True
                     return nmea_sentence
+
 
     def get_current_location(self):
         if self.__gps_fix:
@@ -73,6 +132,7 @@ class ultimate_gps_module:
 
                 print(f"{latitude_dec}, {longitude_dec}")
 
+
     def get_current_speed(self, print_to_console):
         if self.__gps_fix:
             rmc_sentence = self.read_nmea_sentence(NMEA_RMC)
@@ -84,7 +144,3 @@ class ultimate_gps_module:
                 if print_to_console:
                     print(f"{speed_knots} knots\n{speed_mph} mph\n{speed_kph} kph") 
                 return speed_mph
-
-    def deinit(self):
-        # Disconnect from serial port
-        self.__uart.deinit()
