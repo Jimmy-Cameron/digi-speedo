@@ -10,6 +10,8 @@ NMEA_GSV = "$GPGSV"
 NMEA_RMC = "$GPRMC"
 NMEA_VTG = "$GPVTG"
 
+DEBUG_PRINTS = 0    # Set to print debug info to console 
+
 class ultimate_gps_module:
     """ Open connection over a UART port
 
@@ -67,7 +69,8 @@ class ultimate_gps_module:
         # Check if there is a satellite fix
         self.check_satellite_fix()
         if self.__gps_fix == False:
-            print("No connection yet...")
+            if DEBUG_PRINTS:
+                print("No connection yet...")
         pass
 
 
@@ -133,7 +136,7 @@ class ultimate_gps_module:
                 print(f"{latitude_dec}, {longitude_dec}")
 
 
-    def get_current_speed(self, print_to_console):
+    def get_current_speed(self):
         if self.__gps_fix:
             rmc_sentence = self.read_nmea_sentence(NMEA_RMC)
             if rmc_sentence != None:
@@ -141,6 +144,6 @@ class ultimate_gps_module:
                 speed_knots = (float)(rmc_sentence[7])
                 speed_mph = speed_knots * 1.151
                 speed_kph = speed_mph * 1.609
-                if print_to_console:
+                if DEBUG_PRINTS:
                     print(f"{speed_knots} knots\n{speed_mph} mph\n{speed_kph} kph") 
                 return speed_mph

@@ -12,6 +12,9 @@ BAUDRATE = 9600
 TX_PIN = 0
 RX_PIN = 1
 
+# Flags
+DEBUG_PRINTS = 0    # Set to print debug info to console 
+
 def format_speed(speed):
     """ Converts the speed from a float value into a 4 digit integer
         to be displayed on a 4 digit display."""
@@ -37,8 +40,9 @@ if __name__ == "__main__":
 
     # main loop
     while(1):
-        speed = gps.get_current_speed(print_to_console=0)
-        print(speed)
+        speed = gps.get_current_speed()
+        if DEBUG_PRINTS:
+            print(speed)
         speed = format_speed(speed)
         output.print_string(message=speed)
         time.sleep(0.01)

@@ -19,6 +19,9 @@ HT16K33_STEADYON        = 0x81
 #  xxxx    =  0000 .. 1111 (0 - F)
 HT16K33_BRIGHTNESS      = 0xEF
 
+# Flags
+DEBUG_PRINTS = 0    # Set to print debug info to console 
+
 display_characters = {
     # Numbers
     "0" : "0x0C3F",
@@ -79,17 +82,20 @@ display_characters = {
 
 class HT16K33_quad_alpha:
     def __init__(self, i2c_peripheral, dev_address):
-        print("Initialising i2c bus...")
+        if DEBUG_PRINTS:
+            print("Initialising i2c bus...")
         self.__addr = dev_address
         self.__bus = I2C(i2c_peripheral, scl=Pin(5), sda=Pin(4), freq=400000)
 
         # Make sure the target device is available
         devices = self.__bus.scan()
         if dev_address not in devices:
-            print("Could not find target device.")
+            if DEBUG_PRINTS:
+                print("Could not find target device.")
             return
         else:
-            print("Found target device.")
+            if DEBUG_PRINTS:
+                print("Found target device.")
 
         buf = []
         self.__bus.writeto_mem(self.__addr, HT16K33_ON, bytes(buf))
@@ -121,7 +127,6 @@ class HT16K33_quad_alpha:
 
                 # Show the scrolling buffer, updating at 0.5 Hz
                 self.__bus.writeto_mem(self.__addr, 0x00, bytes(scrolling_buffer))
-                # self.__bus.writeto(self.__addr, bytes(scrolling_buffer))
                 time.sleep(0.5)
 
             # All of the message has been displayed, but we need to carry on with some blank characters
@@ -135,7 +140,6 @@ class HT16K33_quad_alpha:
                 scrolling_buffer.pop(0)
 
                 self.__bus.writeto_mem(self.__addr, 0x00, bytes(scrolling_buffer))
-                # self.__bus.writeto(self.__addr, bytes(scrolling_buffer))
                 time.sleep(0.5)
             self.clear_display()
         else:
@@ -146,7 +150,6 @@ class HT16K33_quad_alpha:
                 output.append((int(display_characters.get(char, "0x2D00"), 16) & 0xFF00) >> 8)
 
             self.__bus.writeto_mem(self.__addr, 0x00, bytes(output))
-            # self.__bus.writeto(self.__addr, bytes(output))
 
     def loading_sequence(self):
         self.clear_display()
@@ -155,13 +158,11 @@ class HT16K33_quad_alpha:
             for digit in range(0, 8, 2):
                 buffer[digit] = buffer[digit] << 1 | 0x01
                 self.__bus.writeto_mem(self.__addr, 0x00, bytes(buffer))
-                # self.__bus.writeto(self.__addr, bytes(buffer))
                 time.sleep(0.01)
         for index in range(0, 6):
             for digit in range(0, 8, 2):
                 buffer[digit] = buffer[digit] << 1 & 0x3E
                 self.__bus.writeto_mem(self.__addr, 0x00, bytes(buffer))
-                # self.__bus.writeto(self.__addr, bytes(buffer))
                 time.sleep(0.01)
 
     def clear_display(self):
